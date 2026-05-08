@@ -119,7 +119,7 @@ export default function Home() {
         </div>
 
         {/* Right: Agent Chat */}
-        <div className="w-96 flex-shrink-0 min-w-0">
+        <div className="w-80 flex-shrink-0" style={{ maxWidth: '320px' }}>
           <AgentChat onSendMessage={handleSendMessage} disabled={false} />
         </div>
       </div>
