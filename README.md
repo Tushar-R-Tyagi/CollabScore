@@ -1,13 +1,12 @@
-<div align="left">
+<table>
+<tr>
+<td>
 
-<img src="https://raw.githubusercontent.com/Tushar-R-Tyagi/hackerrank-agent-assessment/main/assets/banner.png" alt="banner" width="100%">
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=3000&pause=1000&color=3B82F6&center=false&vCenter=true&width=600&lines=AI+Orchestration+Evaluator;Debug+with+AI+not+for+AI;Measure+collaboration+not+just+code" alt="Typing SVG" />
 
-<br />
-
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=3000&pause=1000&color=3B82F6&center=true&vCenter=true&width=600&lines=%E2%9A%A1+AI+Orchestration+Evaluator;%F0%9F%A7%A0+Debug+with+AI%2C+not+for+AI;%F0%9F%8E%AF+Measure+collaboration%2C+not+just+code" alt="Typing SVG" />
-
-<br />
-
+</td>
+</tr>
+</table>
 
 A prototype demonstrating how to evaluate a developer's ability to **orchestrate AI agents** — not just write code. Built for HackerRank's shift from Leetcode-style puzzles to real-world AI collaboration assessment.
 
