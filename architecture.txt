@@ -1,0 +1,16 @@
+orchestrator-demo/
+├── backend/
+│   ├── app.py
+│   ├── requirements.txt
+│   ├── billing_module/
+│   │   ├── __init__.py
+│   │   ├── plans.py
+│   │   ├── billing.py
+│   │   ├── discounts.py
+│   │   └── tests/
+│   │       ├── __init__.py
+│   │       └── test_billing.py
+│   └── .env
+├── frontend/
+│   └── (we'll set up Next.js later)
+└── README.md
