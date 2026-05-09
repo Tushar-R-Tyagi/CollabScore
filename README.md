@@ -51,3 +51,85 @@ Two issues are hidden in the codebase without comments or hints:
 ```bash
 cd backend
 pip install -r requirements.txt
+```
+### Create backend/.env:
+```txt
+GROQ_API_KEY=gsk_your_key_here
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+```
+
+### Run:
+```bash
+python app.py
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open http://localhost:3000
+
+### Architecture
+```
+┌─────────────────────────────────────────────────┐
+│                   Browser                       │
+│  ┌──────────┬──────────────┬────────────────┐   │
+│  │ File     │  Monaco      │  AI Agent      │   │
+│  │ Tree     │  Editor      │  Chat          │   │
+│  └──────────┴──────────────┴────────────────┘   │
+│                    │                            │
+│              Event Logger (JS)                  │
+└────────────────────┬────────────────────────────┘
+                     │ HTTP
+┌────────────────────▼─────────────────────────────┐
+│              Flask Backend                       │
+│  ┌─────────────┬────────────┬────────────────┐   │
+│  │ /api/files  │ /api/agent │ /api/evaluate  │   │
+│  │             │   /chat    │                │   │
+│  └─────────────┴────────────┴────────────────┘   │
+│                     │                            │
+│              Event Store (in-memory)             │
+└────────────────────┬─────────────────────────────┘
+                     │
+┌────────────────────▼─────────────────────────────┐
+│              Groq API                            │
+│         (Llama 3.3 70B Versatile)                │
+└──────────────────────────────────────────────────┘
+
+```
+
+### Project Structure
+```
+hackerrank-agent-assessment/
+├── backend/
+│   ├── app.py                    # Flask server
+│   ├── requirements.txt
+│   ├── .env
+│   └── billing_module/
+│       ├── __init__.py
+│       ├── plans.py              # Plan definitions (FAMILY is uppercase)
+│       ├── billing.py            # Billing logic (silent exception bug)
+│       ├── discounts.py           # Discount logic (case sensitivity bug)
+│       └── tests/
+│           ├── __init__.py
+│           └── test_billing.py   # Existing tests (incomplete)
+└── frontend/
+    └── src/
+        ├── app/
+        │   ├── page.tsx           # Main three-panel layout
+        │   ├── layout.tsx
+        │   └── globals.css
+        ├── components/
+        │   ├── FileTree.tsx       # Left panel
+        │   ├── CodeEditor.tsx     # Center panel (Monaco)
+        │   ├── AgentChat.tsx      # Right panel (AI chat)
+        │   └── EvaluationDashboard.tsx  # Post-ship results
+        └── lib/
+            └── api.ts             # API client
+```
+
+### Author
+
+Tushar Tyagi
