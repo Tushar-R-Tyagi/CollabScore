@@ -3,6 +3,9 @@ import os
 import json
 import uuid
 import datetime
+import subprocess
+import tempfile
+import shutil
 
 # Add backend directory to Python path so billing_module works
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -220,6 +223,74 @@ def evaluate():
     }
 
     return jsonify(evaluation)
+
+@app.route('/api/run-tests', methods=['POST'])
+def run_tests():
+    """Execute the candidate's test file and return results."""
+    data = request.json
+    current_code = data.get('current_code', {})
+    
+    # Create a temp directory with the candidate's code
+    tmpdir = tempfile.mkdtemp()
+    try:
+        # Write all files to temp directory
+        for filepath, content in current_code.items():
+            if filepath.startswith('tests/') or filepath.startswith('tests\\'):
+                # Create tests folder and write file there
+                tests_dir = os.path.join(tmpdir, 'tests')
+                os.makedirs(tests_dir, exist_ok=True)
+                filename = os.path.basename(filepath)
+                full_path = os.path.join(tests_dir, filename)
+            else:
+                # Write module files directly to tmpdir root
+                filename = os.path.basename(filepath)
+                full_path = os.path.join(tmpdir, filename)
+            
+            with open(full_path, 'w') as f:
+                f.write(content)
+        
+        # Create empty __init__.py in tests folder (skip root — not needed)
+        tests_dir = os.path.join(tmpdir, 'tests')
+        if os.path.exists(tests_dir):
+            init_file = os.path.join(tests_dir, '__init__.py')
+            if not os.path.exists(init_file):
+                open(init_file, 'a').close()
+        
+        # Run pytest from the temp directory
+        result = subprocess.run(
+            ['python', '-m', 'pytest', 'tests/', '-v', '--tb=short'],
+            cwd=tmpdir,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        # Log the test run event
+        event = {
+            "id": str(uuid.uuid4()),
+            "type": "test_run",
+            "timestamp": datetime.datetime.now().isoformat(),
+            "data": {
+                "passed": result.returncode == 0,
+                "output": result.stdout,
+                "errors": result.stderr
+            }
+        }
+        events.append(event)
+        
+        return jsonify({
+            "passed": result.returncode == 0,
+            "output": result.stdout,
+            "errors": result.stderr,
+            "event_id": event["id"]
+        })
+    
+    except subprocess.TimeoutExpired:
+        return jsonify({"passed": False, "output": "", "errors": "Test execution timed out after 10 seconds"})
+    except Exception as e:
+        return jsonify({"passed": False, "output": "", "errors": str(e)})
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def check_bug_fixes(code):

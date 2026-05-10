@@ -5,7 +5,7 @@ import FileTree from '@/components/FileTree';
 import CodeEditor from '@/components/CodeEditor';
 import AgentChat from '@/components/Agentchat';
 import EvaluationDashboard from '@/components/EvaluationDashboard';
-import { fetchFiles, sendAgentMessage, logEvent, getEvaluation } from '@/lib/api';
+import { fetchFiles, sendAgentMessage, logEvent, getEvaluation, runTests } from '@/lib/api';
 
 export default function Home() {
   const [files, setFiles] = useState<Record<string, string>>({});
@@ -13,6 +13,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [shipped, setShipped] = useState(false);
   const [evaluation, setEvaluation] = useState<any>(null);
+  const [testOutput, setTestOutput] = useState<string | null>(null);
 
   // Load files on mount
   useEffect(() => {
@@ -66,6 +67,13 @@ export default function Home() {
     setEvaluation(null);
   };
 
+  // Run tests
+  const handleRunTests = async () => {
+  setTestOutput("Running tests...");
+  const result = await runTests(files);
+  setTestOutput(result.output || result.errors);
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#1e1e1e]">
@@ -97,9 +105,14 @@ export default function Home() {
           🚀 Ship Fix
         </button>
       </div>
-
+        <button
+          onClick={handleRunTests}
+          className="px-4 py-1.5 bg-yellow-600 text-white text-sm rounded-md hover:bg-yellow-700 font-medium"
+        >
+          🧪 Run Tests
+        </button>
       {/* Three-panel layout */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Left: File Tree */}
         <div className="w-56 flex-shrink-0">
           <FileTree
@@ -122,6 +135,21 @@ export default function Home() {
         <div className="w-80 flex-shrink-0" style={{ maxWidth: '320px' }}>
           <AgentChat onSendMessage={handleSendMessage} disabled={false} />
         </div>
+        {/* Replace the current test output panel with this */}
+        {testOutput && (
+          <div className="absolute bottom-0 left-56 right-80 bg-[#1e1e1e] border-t border-[#3e3e3e] p-4 overflow-y-auto font-mono text-sm text-[#d4d4d4] z-10 h-40">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-[#888]">Test Output</span>
+              <button 
+                onClick={() => setTestOutput(null)}
+                className="px-2 py-0.5 bg-[#333] text-xs rounded hover:bg-[#444]"
+              >
+                ✕
+              </button>
+            </div>
+            <pre className="whitespace-pre-wrap">{testOutput}</pre>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -40,3 +40,12 @@ export async function getAllEvents() {
   const res = await fetch(`${API_BASE}/events/all`);
   return await res.json();
 }
+
+export async function runTests(currentCode: Record<string, string>) {
+  const res = await fetch(`${API_BASE}/run-tests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_code: currentCode }),
+  });
+  return await res.json();
+}

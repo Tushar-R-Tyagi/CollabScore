@@ -1,6 +1,6 @@
 import logging
-from ..plans import get_plan
-from .discounts import get_discount
+from plans import get_plan
+from discounts import get_discount
 
 logger = logging.getLogger(__name__)
 

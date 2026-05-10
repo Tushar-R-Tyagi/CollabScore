@@ -1,4 +1,7 @@
-from billing_module.billing import calculate_total
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from billing import calculate_total
 
 
 def make_user(tenure_months=0):
