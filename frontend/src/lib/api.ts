@@ -49,3 +49,7 @@ export async function runTests(currentCode: Record<string, string>) {
   });
   return await res.json();
 }
+
+export async function startSession() {
+  await fetch(`${API_BASE}/session/start`, { method: 'POST' });
+}

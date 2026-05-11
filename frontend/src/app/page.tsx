@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import FileTree from '@/components/FileTree';
 import CodeEditor from '@/components/CodeEditor';
 import AgentChat from '@/components/Agentchat';
-import EvaluationDashboard from '@/components/EvaluationDashboard';
-import { fetchFiles, sendAgentMessage, logEvent, getEvaluation, runTests } from '@/lib/api';
+import EvaluationDashboard from '../components/EvaluationDashboard';
+import { fetchFiles, sendAgentMessage, logEvent, getEvaluation, runTests, startSession } from '@/lib/api';
 
 export default function Home() {
   const [files, setFiles] = useState<Record<string, string>>({});
@@ -19,9 +19,9 @@ export default function Home() {
   useEffect(() => {
     async function load() {
       try {
+        await startSession();
         const data = await fetchFiles();
         setFiles(data);
-        // Select first non-init file
         const firstFile = Object.keys(data).find((f) => !f.includes('__init__')) || Object.keys(data)[0];
         setSelectedFile(firstFile || '');
       } catch (err) {
@@ -51,6 +51,13 @@ export default function Home() {
     [files]
   );
 
+  // Handle run tests
+  const handleRunTests = async () => {
+    setTestOutput('Running tests...');
+    const result = await runTests(files);
+    setTestOutput(result.output || result.errors || 'No output');
+  };
+
   // Handle ship fix
   const handleShipFix = async () => {
     await logEvent('task_complete', {});
@@ -65,13 +72,7 @@ export default function Home() {
     setFiles(data);
     setShipped(false);
     setEvaluation(null);
-  };
-
-  // Run tests
-  const handleRunTests = async () => {
-  setTestOutput("Running tests...");
-  const result = await runTests(files);
-  setTestOutput(result.output || result.errors);
+    setTestOutput(null);
   };
 
   if (loading) {
@@ -89,32 +90,42 @@ export default function Home() {
   return (
     <div className="h-screen flex flex-col bg-[#1e1e1e]">
       {/* Top bar */}
-      <div className="h-12 bg-[#323233] border-b border-[#3e3e3e] flex items-center justify-between px-4">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-white">
-            🐛 Billing System Debug
-          </span>
-          <span className="text-xs text-[#888]">
-            Production issue: Family plan discounts not applying
-          </span>
+      <div className="h-14 bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#0f3460] border-b border-[#3e3e3e] flex items-center justify-between px-5">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">⚡</span>
+            <span className="text-base font-bold text-white tracking-tight">
+              HackerRank <span className="text-blue-400">AI Orchestrator</span>
+            </span>
+          </div>
+          <div className="h-5 w-px bg-[#4a4a4a]"></div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+            <span className="text-sm text-[#aab]">
+              Production issue: Family plan discounts not applying
+            </span>
+          </div>
         </div>
-        <button
-          onClick={handleShipFix}
-          className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 font-medium"
-        >
-          🚀 Ship Fix
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleRunTests}
+            className="px-4 py-1.5 bg-amber-600 text-white text-sm rounded-md hover:bg-amber-700 font-medium"
+          >
+            🧪 Run Tests
+          </button>
+          <button
+            onClick={handleShipFix}
+            className="px-5 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm rounded-lg hover:from-green-600 hover:to-emerald-700 font-semibold shadow-lg shadow-green-900/30 transition-all duration-200 hover:scale-105"
+          >
+            🚀 Ship Fix
+          </button>
+        </div>
       </div>
-        <button
-          onClick={handleRunTests}
-          className="px-4 py-1.5 bg-yellow-600 text-white text-sm rounded-md hover:bg-yellow-700 font-medium"
-        >
-          🧪 Run Tests
-        </button>
+
       {/* Three-panel layout */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left: File Tree */}
-        <div className="w-56 flex-shrink-0">
+        <div className="w-56 flex-shrink-0 border-r border-[#3e3e3e]">
           <FileTree
             files={files}
             selectedFile={selectedFile}
@@ -123,7 +134,7 @@ export default function Home() {
         </div>
 
         {/* Center: Code Editor */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <CodeEditor
             filename={selectedFile}
             code={files[selectedFile] || ''}
@@ -132,23 +143,29 @@ export default function Home() {
         </div>
 
         {/* Right: Agent Chat */}
-        <div className="w-80 flex-shrink-0" style={{ maxWidth: '320px' }}>
+        <div className="relative flex-shrink-0 border-l border-[#3e3e3e]" style={{ width: '384px', minWidth: '280px', maxWidth: '600px', resize: 'horizontal', overflow: 'auto' }}>
           <AgentChat onSendMessage={handleSendMessage} disabled={false} />
         </div>
-        {/* Replace the current test output panel with this */}
+
+        {/* Test output modal */}
         {testOutput && (
-          <div className="absolute bottom-0 left-56 right-80 bg-[#1e1e1e] border-t border-[#3e3e3e] p-4 overflow-y-auto font-mono text-sm text-[#d4d4d4] z-10 h-40">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-[#888]">Test Output</span>
-              <button 
-                onClick={() => setTestOutput(null)}
-                className="px-2 py-0.5 bg-[#333] text-xs rounded hover:bg-[#444]"
-              >
-                ✕
-              </button>
+          <>
+            <div className="absolute inset-0 z-10" onClick={() => setTestOutput(null)}></div>
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-[#1a1a1a] border border-[#3e3e3e] rounded-lg shadow-2xl z-20 w-[600px] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-[#3e3e3e]">
+                <span className="text-xs font-semibold text-[#888]">🧪 Test Output</span>
+                <button
+                  onClick={() => setTestOutput(null)}
+                  className="px-3 py-1 bg-[#444] text-white text-xs rounded hover:bg-[#555]"
+                >
+                  ✕ Close
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto font-mono text-sm text-[#d4d4d4]" style={{ maxHeight: '200px' }}>
+                <pre className="whitespace-pre-wrap">{testOutput}</pre>
+              </div>
             </div>
-            <pre className="whitespace-pre-wrap">{testOutput}</pre>
-          </div>
+          </>
         )}
       </div>
     </div>

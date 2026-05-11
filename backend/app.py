@@ -7,7 +7,6 @@ import subprocess
 import tempfile
 import shutil
 
-# Add backend directory to Python path so billing_module works
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, request, jsonify
@@ -17,48 +16,43 @@ from openai import OpenAI
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
-client = OpenAI(
-    api_key=os.getenv("GROQ_API_KEY"),
-    base_url="https://api.groq.com/openai/v1"
-)
-
 app = Flask(__name__)
 CORS(app)
 
+client = OpenAI(
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url=os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+)
+
 # In-memory storage for events (single user demo)
 events = []
+session_start = None
 
-# Context about the codebase for the AI agent
 CODEBASE_CONTEXT = """
-This is a billing system for a SaaS product. The system has three plans:
-- Basic: $10/unit
-- Professional: $25/unit  
-- FAMILY: $40/unit
-
-The system should apply loyalty discounts:
-- Family plan users with >12 months tenure get 15% off
-- Professional plan users with >24 months tenure get 10% off
-
-The candidate is debugging a production issue where Family plan users aren't receiving their loyalty discounts.
+This is a billing system for a SaaS product. The system has three plans with different price points.
+The system calculates totals based on plan selection, quantity, and any applicable discounts.
 """
 
-AGENT_SYSTEM_PROMPT = f"""You are a junior developer assistant helping debug a billing system. You have access to the codebase and can suggest changes.
+AGENT_SYSTEM_PROMPT = f"""You are a junior developer assistant. You have access to a codebase and can suggest changes.
 
 Your personality:
 - You're helpful but not all-knowing
 - You explain your reasoning clearly
-- You only make changes when asked
+- You only make changes when explicitly asked
 - You output code diffs when proposing changes
 - You sometimes miss edge cases or make assumptions
+- You occasionally suggest changes that introduce new problems
+- You don't jump to conclusions — you let the user guide the investigation
 
 The codebase context:
 {CODEBASE_CONTEXT}
 
 When responding:
-1. If asked to investigate, explain what you're looking at
-2. If asked to fix something, propose a specific diff
+1. If asked to investigate, explain what you're looking at — but don't guess the bug unless you see clear evidence
+2. If asked to fix something specific, propose a diff
 3. If asked to write tests, provide test code
 4. Always explain why you're suggesting a change
+5. Don't volunteer the root cause unless the user has shown they've found it themselves
 
 Be concise but thorough. Don't write essays."""
 
@@ -70,13 +64,21 @@ def read_billing_module():
 
     for root, dirs, filenames in os.walk(base_path):
         for filename in filenames:
-            if filename.endswith('.py'):
+            if filename.endswith('.py') and '__init__' not in filename:
                 full_path = os.path.join(root, filename)
                 relative_path = os.path.relpath(full_path, base_path)
                 with open(full_path, 'r') as f:
                     files[relative_path] = f.read()
 
     return files
+
+
+@app.route('/api/session/start', methods=['POST'])
+def start_session():
+    """Record the start time of the candidate's session."""
+    global session_start
+    session_start = datetime.datetime.now()
+    return jsonify({"started": session_start.isoformat()})
 
 
 @app.route('/api/files', methods=['GET'])
@@ -131,6 +133,9 @@ def agent_chat():
         })
 
     except Exception as e:
+        import traceback
+        print("=== ERROR IN AGENT CHAT ===")
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
@@ -154,109 +159,33 @@ def get_all_events():
     return jsonify({"events": events})
 
 
-@app.route('/api/evaluate', methods=['POST'])
-def evaluate():
-    """Generate evaluation dashboard data from events."""
-    data = request.json
-    final_code = data.get('final_code', {})
-
-    event_counts = {}
-    for event in events:
-        event_type = event['type']
-        if event_type not in event_counts:
-            event_counts[event_type] = 0
-        event_counts[event_type] += 1
-
-    agent_prompts = event_counts.get('agent_prompt', 0)
-    direct_edits = event_counts.get('code_edit', 0)
-    agent_diffs_accepted = event_counts.get('agent_diff_accepted', 0)
-    agent_diffs_rejected = event_counts.get('agent_diff_rejected', 0)
-    test_runs = event_counts.get('test_run', 0)
-
-    discovery_score = min(100, (agent_prompts * 20) + (direct_edits * 10))
-    diagnosis_score = min(100, test_runs * 25)
-
-    total_actions = agent_prompts + direct_edits
-    if total_actions > 0:
-        agent_ratio = agent_prompts / total_actions
-        if 0.4 <= agent_ratio <= 0.6:
-            allocation_score = 100
-        elif 0.2 <= agent_ratio <= 0.8:
-            allocation_score = 80
-        else:
-            allocation_score = 60
-    else:
-        allocation_score = 0
-
-    verification_score = min(100, (agent_diffs_accepted * 30))
-    if agent_diffs_rejected > 0:
-        verification_score += 20
-
-    task_complete = event_counts.get('task_complete', 0) > 0
-    speed_score = 100 if task_complete else 50
-
-    bugs_fixed = check_bug_fixes(final_code)
-
-    evaluation = {
-        "scores": {
-            "discovery": min(100, discovery_score),
-            "diagnosis": min(100, diagnosis_score),
-            "task_allocation": allocation_score,
-            "verification": min(100, verification_score),
-            "speed": speed_score
-        },
-        "bugs_fixed": bugs_fixed,
-        "statistics": {
-            "total_events": len(events),
-            "agent_interactions": agent_prompts,
-            "direct_code_edits": direct_edits,
-            "agent_suggestions_accepted": agent_diffs_accepted,
-            "agent_suggestions_rejected": agent_diffs_rejected,
-            "test_runs": test_runs
-        },
-        "timeline": [{
-            "id": e["id"],
-            "type": e["type"],
-            "timestamp": e["timestamp"],
-            "summary": e.get("data", {}).get("message", "")[:100] if e["type"] in ["agent_prompt", "agent_response"] else e["type"]
-        } for e in events]
-    }
-
-    return jsonify(evaluation)
-
 @app.route('/api/run-tests', methods=['POST'])
 def run_tests():
     """Execute the candidate's test file and return results."""
     data = request.json
     current_code = data.get('current_code', {})
     
-    # Create a temp directory with the candidate's code
     tmpdir = tempfile.mkdtemp()
     try:
-        # Write all files to temp directory
         for filepath, content in current_code.items():
             if filepath.startswith('tests/') or filepath.startswith('tests\\'):
-                # Create tests folder and write file there
                 tests_dir = os.path.join(tmpdir, 'tests')
                 os.makedirs(tests_dir, exist_ok=True)
                 filename = os.path.basename(filepath)
                 full_path = os.path.join(tests_dir, filename)
             else:
-                # Write module files directly to tmpdir root
                 filename = os.path.basename(filepath)
                 full_path = os.path.join(tmpdir, filename)
             
             with open(full_path, 'w') as f:
                 f.write(content)
         
-        # Create empty __init__.py in tests folder (skip root — not needed)
         tests_dir = os.path.join(tmpdir, 'tests')
         if os.path.exists(tests_dir):
             init_file = os.path.join(tests_dir, '__init__.py')
             if not os.path.exists(init_file):
                 open(init_file, 'a').close()
         
-        # Run pytest from the temp directory
         result = subprocess.run(
             ['python', '-m', 'pytest', 'tests/', '-v', '--tb=short'],
             cwd=tmpdir,
@@ -265,7 +194,6 @@ def run_tests():
             timeout=10
         )
         
-        # Log the test run event
         event = {
             "id": str(uuid.uuid4()),
             "type": "test_run",
@@ -293,8 +221,217 @@ def run_tests():
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+@app.route('/api/evaluate', methods=['POST'])
+def evaluate():
+    """Generate evaluation dashboard data from events using defensible scoring model."""
+    data = request.json
+    final_code = data.get('final_code', {})
+
+    event_counts = {}
+    agent_messages = []
+    code_edit_files = set()
+    agent_diffs_accepted_count = 0
+    agent_diffs_rejected_count = 0
+    edits_after_accept = 0
+    last_accept_time = None
+    
+    for event in events:
+        event_type = event['type']
+        event_counts[event_type] = event_counts.get(event_type, 0) + 1
+        
+        if event_type == 'agent_response':
+            agent_messages.append(event.get('data', {}).get('message', ''))
+        elif event_type == 'code_edit':
+            filename = event.get('data', {}).get('filename', '')
+            if filename:
+                code_edit_files.add(filename)
+            if last_accept_time:
+                edits_after_accept += 1
+        elif event_type == 'agent_diff_accepted':
+            agent_diffs_accepted_count += 1
+            last_accept_time = event.get('timestamp')
+        elif event_type == 'agent_diff_rejected':
+            agent_diffs_rejected_count += 1
+            last_accept_time = None
+
+    agent_prompts = event_counts.get('agent_prompt', 0)
+    direct_edits = event_counts.get('code_edit', 0)
+    test_runs = event_counts.get('test_run', 0)
+    task_complete = event_counts.get('task_complete', 0) > 0
+
+    # Detect hallucination
+    hallucination_keywords = ['users.py', 'get_user', 'from users import', 'create a new file']
+    agent_hallucinated = any(
+        any(keyword in msg.lower() for keyword in hallucination_keywords)
+        for msg in agent_messages
+    )
+    
+    all_final_code = " ".join(final_code.values())
+    hallucinated_code_present = any(
+        keyword in all_final_code.lower() for keyword in ['from users import', 'import users']
+    )
+    hallucination_caught = agent_hallucinated and not hallucinated_code_present
+
+    # Check code quality
+    bugs_fixed = check_bug_fixes(final_code)
+    bugs_introduced = check_bugs_introduced(final_code)
+    
+    B_found = sum(1 for v in bugs_fixed.values() if v)
+    total_bugs = 2
+
+    # Calculate time
+    global session_start
+    T_total = 0
+    
+    if session_start:
+        for event in events:
+            if event['type'] == 'task_complete':
+                try:
+                    end_time = datetime.datetime.fromisoformat(event['timestamp'])
+                    T_total = (end_time - session_start).total_seconds()
+                except Exception:
+                    pass
+                break
+        
+        if T_total == 0 and events:
+            try:
+                last_ts = events[-1].get('timestamp', '')
+                end_time = datetime.datetime.fromisoformat(last_ts)
+                T_total = (end_time - session_start).total_seconds()
+            except Exception:
+                pass
+    
+    if T_total == 0:
+        T_total = 600
+
+    # 1. DISCOVERY
+    F = len(code_edit_files)
+    P = agent_prompts
+    
+    exploration_breadth = min(1.0, F / 4)
+    prompt_depth = min(1.0, max(0, (P - 1)) / 3)
+    patience_factor = min(1.0, T_total / 300)
+    
+    discovery = 100 * (0.4 * exploration_breadth + 0.4 * prompt_depth + 0.2 * patience_factor)
+    discovery = round(discovery)
+
+    # 2. DIAGNOSIS
+    R = test_runs
+    
+    test_rigor = min(1.0, R / 3)
+    fix_completeness = B_found / total_bugs if total_bugs > 0 else 0
+    skepticism = min(1.0, agent_diffs_rejected_count / 2)
+    H_caught = 1.0 if hallucination_caught else 0.0
+    
+    hallucination_penalty = 0.3 if (agent_hallucinated and not hallucination_caught) else 1.0
+    
+    diagnosis = 100 * (
+        0.3 * test_rigor + 
+        0.4 * fix_completeness + 
+        0.2 * skepticism + 
+        0.1 * H_caught
+    ) * hallucination_penalty
+    diagnosis = round(min(100, diagnosis))
+
+    # 3. TASK ALLOCATION
+    total_actions = agent_prompts + direct_edits
+    
+    if total_actions == 0:
+        allocation = 0
+    else:
+        agent_ratio = agent_prompts / total_actions
+        if agent_ratio < 0.1:
+            allocation = 20
+        elif agent_ratio > 0.9:
+            allocation = 15
+        else:
+            deviation = abs(agent_ratio - 0.5)
+            allocation = 100 * max(0, 1 - deviation * 2.5)
+    
+    # Quality penalty for accepting bad agent output
+    if test_runs > 0 and agent_diffs_accepted_count > 0 and B_found < 2:
+        allocation = max(15, allocation - 25)
+    
+    allocation = round(min(100, allocation))
+
+    # 4. VERIFICATION
+    suggestion_total = agent_diffs_accepted_count + agent_diffs_rejected_count
+    
+    if suggestion_total == 0:
+        verification = 50
+    elif agent_diffs_rejected_count == 0 and agent_diffs_accepted_count > 0:
+        verification = 15
+    elif agent_diffs_rejected_count / max(1, suggestion_total) > 0.7:
+        verification = 40
+    else:
+        rejection_rate = agent_diffs_rejected_count / max(1, suggestion_total)
+        verification = 100 * min(1.0, rejection_rate / 0.25)
+        verification += 15 * min(1.0, edits_after_accept / 2)
+        verification += 20 * H_caught
+        verification = min(100, verification)
+    
+    verification = round(verification)
+
+    # 5. SPEED
+    completion = B_found / total_bugs if total_bugs > 0 else 0
+    time_efficiency = max(0, 1 - (T_total - 300) / 900)
+    Q_penalty = 0.5 if bugs_introduced['any'] else 1.0
+    
+    speed = 100 * completion * time_efficiency * Q_penalty
+    speed = round(min(100, max(0, speed)))
+
+    # COMPOSITE
+    composite = round(
+        0.20 * discovery + 
+        0.25 * diagnosis + 
+        0.20 * allocation + 
+        0.25 * verification + 
+        0.10 * speed
+    )
+
+    evaluation = {
+        "scores": {
+            "discovery": discovery,
+            "diagnosis": diagnosis,
+            "task_allocation": allocation,
+            "verification": verification,
+            "speed": speed,
+            "composite": composite
+        },
+        "weights": {
+            "discovery": 0.20,
+            "diagnosis": 0.25,
+            "task_allocation": 0.20,
+            "verification": 0.25,
+            "speed": 0.10
+        },
+        "bugs_fixed": bugs_fixed,
+        "bugs_introduced": bugs_introduced,
+        "agent_hallucinated": agent_hallucinated,
+        "hallucination_caught": hallucination_caught,
+        "time_total_seconds": T_total,
+        "statistics": {
+            "total_events": len(events),
+            "agent_interactions": agent_prompts,
+            "direct_code_edits": direct_edits,
+            "agent_suggestions_accepted": agent_diffs_accepted_count,
+            "agent_suggestions_rejected": agent_diffs_rejected_count,
+            "test_runs": test_runs,
+            "files_viewed": len(code_edit_files)
+        },
+        "timeline": [{
+            "id": e["id"],
+            "type": e["type"],
+            "timestamp": e["timestamp"],
+            "summary": e.get("data", {}).get("message", "")[:100] if e["type"] in ["agent_prompt", "agent_response"] else e["type"]
+        } for e in events]
+    }
+
+    return jsonify(evaluation)
+
+
 def check_bug_fixes(code):
-    """Basic check if bugs appear to be fixed."""
+    """Check if the two known bugs are fixed in final code."""
     bugs = {
         "silent_exception": False,
         "case_sensitivity": False,
@@ -305,18 +442,53 @@ def check_bug_fixes(code):
     discounts_code = code.get("discounts.py", "")
     test_code = code.get("tests/test_billing.py", "")
 
-    if "except Exception" in billing_code:
-        if "raise" in billing_code.split("except Exception")[1][:200]:
-            bugs["silent_exception"] = True
-    else:
+    if "except Exception" not in billing_code:
+        bugs["silent_exception"] = True
+    elif "raise" in billing_code or "logger.exception" in billing_code:
         bugs["silent_exception"] = True
 
-    if "FAMILY" in discounts_code or "upper()" in discounts_code or "lower()" in discounts_code:
+    discounts_upper = discounts_code.upper()
+    if "PLAN.UPPER()" in discounts_upper or "PLAN.LOWER()" in discounts_upper:
+        bugs["case_sensitivity"] = True
+    elif '"FAMILY"' in discounts_code and '"family"' not in discounts_code:
         bugs["case_sensitivity"] = True
 
-    if "family" in test_code.lower() or "FAMILY" in test_code:
-        bugs["test_coverage"] = True
+    test_lower = test_code.lower()
+    if "family" in test_lower and "def test_" in test_lower:
+        lines = test_code.split('\n')
+        for line in lines:
+            if 'def test_' in line and 'family' in line.lower():
+                bugs["test_coverage"] = True
+                break
 
+    return bugs
+
+
+def check_bugs_introduced(code):
+    """Check if candidate introduced new problems into the codebase."""
+    bugs = {
+        "any": False,
+        "deleted_existing_test": False,
+        "hallucinated_dependencies": False,
+        "broke_imports": False
+    }
+    
+    test_code = code.get("tests/test_billing.py", "")
+    all_code = " ".join(code.values())
+    billing_code = code.get("billing.py", "")
+    
+    if "test_basic_plan" not in test_code:
+        bugs["deleted_existing_test"] = True
+        bugs["any"] = True
+    
+    if "from users import" in all_code or "import users" in all_code:
+        bugs["hallucinated_dependencies"] = True
+        bugs["any"] = True
+    
+    if "from .plans" in billing_code or "from .discounts" in billing_code:
+        bugs["broke_imports"] = True
+        bugs["any"] = True
+    
     return bugs
 
 
