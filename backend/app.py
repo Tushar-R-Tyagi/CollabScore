@@ -259,6 +259,12 @@ def evaluate():
     test_runs = event_counts.get('test_run', 0)
     task_complete = event_counts.get('task_complete', 0) > 0
 
+    # Debug: see what code the backend received
+    print("=== FINAL CODE KEYS ===")
+    for key, value in final_code.items():
+        print(f"{key}: {value[:100]}...")
+    print("=== END FINAL CODE ===")
+
     # Detect hallucination
     hallucination_keywords = ['users.py', 'get_user', 'from users import', 'create a new file']
     agent_hallucinated = any(
@@ -275,6 +281,9 @@ def evaluate():
     # Check code quality
     bugs_fixed = check_bug_fixes(final_code)
     bugs_introduced = check_bugs_introduced(final_code)
+    
+    print("=== BUGS FIXED ===")
+    print(bugs_fixed)
     
     B_found = sum(1 for v in bugs_fixed.values() if v)
     total_bugs = 2
@@ -348,7 +357,6 @@ def evaluate():
             deviation = abs(agent_ratio - 0.5)
             allocation = 100 * max(0, 1 - deviation * 2.5)
     
-    # Quality penalty for accepting bad agent output
     if test_runs > 0 and agent_diffs_accepted_count > 0 and B_found < 2:
         allocation = max(15, allocation - 25)
     
@@ -438,9 +446,14 @@ def check_bug_fixes(code):
         "test_coverage": False
     }
 
-    billing_code = code.get("billing.py", "")
-    discounts_code = code.get("discounts.py", "")
-    test_code = code.get("tests/test_billing.py", "")
+    # Normalize keys — handle both forward and backslash paths
+    normalized = {}
+    for key, value in code.items():
+        normalized[key.replace('\\', '/')] = value
+
+    billing_code = normalized.get("billing.py", "")
+    discounts_code = normalized.get("discounts.py", "")
+    test_code = normalized.get("tests/test_billing.py", "")
 
     if "except Exception" not in billing_code:
         bugs["silent_exception"] = True
@@ -455,11 +468,7 @@ def check_bug_fixes(code):
 
     test_lower = test_code.lower()
     if "family" in test_lower and "def test_" in test_lower:
-        lines = test_code.split('\n')
-        for line in lines:
-            if 'def test_' in line and 'family' in line.lower():
-                bugs["test_coverage"] = True
-                break
+        bugs["test_coverage"] = True
 
     return bugs
 
@@ -473,7 +482,7 @@ def check_bugs_introduced(code):
         "broke_imports": False
     }
     
-    test_code = code.get("tests/test_billing.py", "")
+    test_code = code.get("tests/test_billing.py", "") or code.get("tests\\test_billing.py", "")
     all_code = " ".join(code.values())
     billing_code = code.get("billing.py", "")
     
