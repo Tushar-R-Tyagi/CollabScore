@@ -13,7 +13,7 @@
                                                                                                     
 
 
-A prototype demonstrating how to evaluate a developer's ability to **orchestrate AI agents** — not just write code. Built for HackerRank's shift from Leetcode-style puzzles to real-world AI collaboration assessment.
+A prototype demonstrating how to evaluate a developer's ability to **orchestrate AI agents** (not just write code). Built for HackerRank's shift from Leetcode-style puzzles to real-world AI collaboration assessment.
 
 ## The Problem
 
@@ -38,7 +38,7 @@ Two issues are hidden in the codebase without comments or hints:
 
 ## 📐 How Scoring Works
 
-The evaluation uses a transparent, tunable mathematical model with five dimensions. Every score is traceable to specific candidate behaviors — nothing is a black box.
+The evaluation uses a transparent, tunable mathematical model with five dimensions. Every score is traceable to specific candidate behaviors, nothing is a black box.
 
 ### The Five Dimensions
 
@@ -156,19 +156,19 @@ These are features this prototype points toward but doesn't implement. They're l
 
 ### Multiple Scenarios
 
-The prototype uses one hardcoded bug scenario. A real platform would support a library of tasks — security vulnerabilities, performance issues, architectural refactors, each with configurable difficulty and AI behavior calibration.
+The prototype uses one hardcoded bug scenario. A real platform would support a library of tasks: security vulnerabilities, performance issues, architectural refactors, each with configurable difficulty and AI behavior calibration.
 
 ### Configurable Scoring Weights
 
-Different roles need different evaluation profiles. A senior architect might weight Verification higher (0.30) while a junior developer might weight Discovery higher (0.25). All weights are already declared as constants — making them configurable per role is a UI task, not an architecture change.
+Different roles need different evaluation profiles. A senior architect might weight Verification higher (0.30) while a junior developer might weight Discovery higher (0.25). All weights are already declared as constants, making them configurable per role is a UI task, not an architecture change.
 
 ### Multi-Agent Scenarios
 
-Future assessments could involve multiple AI agents with different roles (code reviewer, security auditor, product manager) — testing whether candidates can orchestrate a team of agents, not just one.
+Future assessments could involve multiple AI agents with different roles (code reviewer, security auditor, product manager), testing whether candidates can orchestrate a team of agents, not just one.
 
 ### Generalist vs. Memorizer Detection
 
-The same event-logging architecture could detect when candidates hardcode solutions to known test cases rather than building general solutions. A "Perturbation Check" would silently run candidate code on a slightly modified dataset — if scores plummet, the candidate was memorizing, not solving.
+The same event-logging architecture could detect when candidates hardcode solutions to known test cases rather than building general solutions. A "Perturbation Check" would silently run candidate code on a slightly modified dataset; if scores plummet, the candidate was memorizing, not solving.
 
 ### Communication Style Analysis
 
