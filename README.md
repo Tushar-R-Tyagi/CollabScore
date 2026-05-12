@@ -1,12 +1,17 @@
-<table>
-<tr>
-<td>
+<div align="center">
+<pre>
+ ██████╗ ██████╗ ██╗     ██╗      █████╗ ██████╗ ███████╗ ██████╗ ██████╗ ██████╗ ███████╗
+██╔════╝██╔═══██╗██║     ██║     ██╔══██╗██╔══██╗██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔════╝
+██║     ██║   ██║██║     ██║     ███████║██████╔╝███████╗██║     ██║   ██║██████╔╝█████╗  
+██║     ██║   ██║██║     ██║     ██╔══██║██╔══██╗╚════██║██║     ██║   ██║██╔══██╗██╔══╝  
+╚██████╗╚██████╔╝███████╗███████╗██║  ██║██████╔╝███████║╚██████╗╚██████╔╝██║  ██║███████╗
+ ╚═════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝
+                                                                                          
+</pre>
+</div>
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=3000&pause=1000&color=3B82F6&center=false&vCenter=true&width=600&lines=AI+Orchestration+Evaluator;Debug+with+AI+not+for+AI;Measure+collaboration+not+just+code" alt="Typing SVG" />
+                                                                                                    
 
-</td>
-</tr>
-</table>
 
 A prototype demonstrating how to evaluate a developer's ability to **orchestrate AI agents** — not just write code. Built for HackerRank's shift from Leetcode-style puzzles to real-world AI collaboration assessment.
 
