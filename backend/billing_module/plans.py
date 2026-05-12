@@ -1,4 +1,3 @@
-# plans.py
 PLANS = {
     "basic": {
         "name": "Basic",

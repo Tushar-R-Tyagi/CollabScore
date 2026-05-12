@@ -78,7 +78,7 @@ def start_session():
     """Record the start time of the candidate's session."""
     global session_start
     session_start = datetime.datetime.now()
-    events = []  # Clear any previous events
+    events = []  # Clears events
     return jsonify({"started": session_start.isoformat()})
 
 
@@ -450,7 +450,7 @@ def check_bug_fixes(code):
         "test_coverage": False
     }
 
-    # Normalize keys — handle both forward and backslash paths
+    # Normalize keys
     normalized = {}
     for key, value in code.items():
         normalized[key.replace('\\', '/')] = value
