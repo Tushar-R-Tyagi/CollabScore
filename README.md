@@ -1,12 +1,17 @@
-<table>
-<tr>
-<td>
+<div align="center">
+<pre>
+ ██████╗ ██████╗ ██╗     ██╗      █████╗ ██████╗ ███████╗ ██████╗ ██████╗ ██████╗ ███████╗
+██╔════╝██╔═══██╗██║     ██║     ██╔══██╗██╔══██╗██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔════╝
+██║     ██║   ██║██║     ██║     ███████║██████╔╝███████╗██║     ██║   ██║██████╔╝█████╗  
+██║     ██║   ██║██║     ██║     ██╔══██║██╔══██╗╚════██║██║     ██║   ██║██╔══██╗██╔══╝  
+╚██████╗╚██████╔╝███████╗███████╗██║  ██║██████╔╝███████║╚██████╗╚██████╔╝██║  ██║███████╗
+ ╚═════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝
+                                                                                          
+</pre>
+</div>
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=3000&pause=1000&color=3B82F6&center=false&vCenter=true&width=600&lines=AI+Orchestration+Evaluator;Debug+with+AI+not+for+AI;Measure+collaboration+not+just+code" alt="Typing SVG" />
+                                                                                                    
 
-</td>
-</tr>
-</table>
 
 A prototype demonstrating how to evaluate a developer's ability to **orchestrate AI agents** — not just write code. Built for HackerRank's shift from Leetcode-style puzzles to real-world AI collaboration assessment.
 
@@ -144,6 +149,31 @@ The dimensions and weights draw from:
 - Dual-Process Theory (Kahneman): Rewards System 2 thinking (verification, testing) over System 1 (quick acceptance of plausible AI output)
 
 The exact thresholds need calibration against real candidate data. This prototype is an assessment platform, not a finished assessment. The math is transparent so hiring managers can tune it to what matters for their roles.
+
+## Future Directions
+
+These are features this prototype points toward but doesn't implement. They're listed here to show the product thinking beyond the demo.
+
+### Multiple Scenarios
+
+The prototype uses one hardcoded bug scenario. A real platform would support a library of tasks — security vulnerabilities, performance issues, architectural refactors, each with configurable difficulty and AI behavior calibration.
+
+### Configurable Scoring Weights
+
+Different roles need different evaluation profiles. A senior architect might weight Verification higher (0.30) while a junior developer might weight Discovery higher (0.25). All weights are already declared as constants — making them configurable per role is a UI task, not an architecture change.
+
+### Multi-Agent Scenarios
+
+Future assessments could involve multiple AI agents with different roles (code reviewer, security auditor, product manager) — testing whether candidates can orchestrate a team of agents, not just one.
+
+### Generalist vs. Memorizer Detection
+
+The same event-logging architecture could detect when candidates hardcode solutions to known test cases rather than building general solutions. A "Perturbation Check" would silently run candidate code on a slightly modified dataset — if scores plummet, the candidate was memorizing, not solving.
+
+### Communication Style Analysis
+
+The event log captures candidate prompts verbatim. A future version could analyze whether confident, fast-moving language correlates with worse verification behavior, surfacing candidates who sound competent but skip critical review steps.
+
 
 ## Tech Stack
 
