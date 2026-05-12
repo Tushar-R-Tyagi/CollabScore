@@ -53,3 +53,12 @@ export async function runTests(currentCode: Record<string, string>) {
 export async function startSession() {
   await fetch(`${API_BASE}/session/start`, { method: 'POST' });
 }
+
+export async function generateReport(finalCode: Record<string, string>) {
+  const res = await fetch(`${API_BASE}/report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ final_code: finalCode }),
+  });
+  return await res.json();
+}

@@ -78,6 +78,7 @@ def start_session():
     """Record the start time of the candidate's session."""
     global session_start
     session_start = datetime.datetime.now()
+    events = []  # Clear any previous events
     return jsonify({"started": session_start.isoformat()})
 
 
@@ -364,11 +365,14 @@ def evaluate():
 
     # 4. VERIFICATION
     suggestion_total = agent_diffs_accepted_count + agent_diffs_rejected_count
+    print(f"DEBUG VERIFICATION: accepted={agent_diffs_accepted_count}, rejected={agent_diffs_rejected_count}, total={suggestion_total}, edits_after_accept={edits_after_accept}")
     
     if suggestion_total == 0:
         verification = 50
     elif agent_diffs_rejected_count == 0 and agent_diffs_accepted_count > 0:
-        verification = 15
+        # Blind acceptance: cap at 25 max
+        verification = 15 + (5 * min(1.0, edits_after_accept / 2))
+        verification = min(25, verification)
     elif agent_diffs_rejected_count / max(1, suggestion_total) > 0.7:
         verification = 40
     else:
@@ -388,8 +392,8 @@ def evaluate():
     speed = 100 * completion * time_efficiency * Q_penalty
     speed = round(min(100, max(0, speed)))
 
-    # COMPOSITE
-    composite = round(
+    # FINAL SCORE
+    final_score = round(
         0.20 * discovery + 
         0.25 * diagnosis + 
         0.20 * allocation + 
@@ -404,7 +408,7 @@ def evaluate():
             "task_allocation": allocation,
             "verification": verification,
             "speed": speed,
-            "composite": composite
+            "final_score": final_score
         },
         "weights": {
             "discovery": 0.20,
@@ -500,6 +504,116 @@ def check_bugs_introduced(code):
     
     return bugs
 
+@app.route('/api/report', methods=['POST'])
+def generate_report():
+    """Generate a narrative evaluation report."""
+    response = evaluate()
+    eval_data = response.get_json()
+    
+    scores = eval_data['scores']
+    bugs_fixed = eval_data['bugs_fixed']
+    stats = eval_data['statistics']
+    timeline = eval_data['timeline']
+    
+    final_score = scores['final_score']
+    if final_score >= 75:
+        profile = "Excellent Orchestrator"
+        profile_desc = "Leads AI like a senior engineer — delegates appropriately, verifies critically, and takes over when needed."
+    elif final_score >= 55:
+        profile = "Capable Collaborator"
+        profile_desc = "Works well with AI but has room to improve in either verification rigor or balanced task allocation."
+    elif final_score >= 35:
+        profile = "Developing Orchestrator"
+        profile_desc = "Shows some collaboration skills but tends toward either over-reliance or under-utilization of AI."
+    else:
+        profile = "Novice AI User"
+        profile_desc = "Either outsourced everything to AI without verification or ignored available AI tools entirely."
+    
+    # Key moment
+    key_moment = None
+    for event in timeline:
+        if event['type'] == 'agent_diff_rejected':
+            key_moment = {
+                "description": "Candidate rejected an AI suggestion — demonstrating independent judgment and willingness to challenge AI output."
+            }
+            break
+    if not key_moment:
+        for event in timeline:
+            if event['type'] == 'test_run':
+                key_moment = {
+                    "description": "Candidate ran tests to validate changes — showing thorough verification habits."
+                }
+                break
+    if not key_moment:
+        for event in timeline:
+            if event['type'] == 'agent_diff_accepted':
+                key_moment = {
+                    "description": "Candidate accepted AI-generated code after review."
+                }
+                break
+    if not key_moment:
+        key_moment = {
+            "description": "Candidate completed the debugging task."
+        }
+    
+    # Strengths
+    strengths = []
+    if scores['discovery'] >= 70:
+        strengths.append("Thorough exploration of the problem space before acting")
+    if scores['diagnosis'] >= 70:
+        strengths.append("Systematic verification through testing and hypothesis validation")
+    if scores['verification'] >= 70:
+        strengths.append("Critical review of AI output")
+    if scores['task_allocation'] >= 70:
+        strengths.append("Well-balanced delegation between AI assistance and direct coding")
+    if not strengths:
+        strengths.append("Completed the task")
+    
+    # Improvements
+    improvements = []
+    if scores['discovery'] < 50:
+        improvements.append("Spend more time exploring the codebase before asking the AI for solutions")
+    if scores['diagnosis'] < 50:
+        improvements.append("Run tests more frequently to validate hypotheses")
+    if scores['verification'] < 50:
+        improvements.append("Review AI suggestions more critically")
+    if scores['task_allocation'] < 30:
+        improvements.append("Find a better balance between AI delegation and direct coding")
+    if stats['agent_suggestions_accepted'] > 0 and stats['agent_suggestions_rejected'] == 0:
+        improvements.append("Challenge the AI occasionally — rejecting a suggestion shows independent judgment")
+    
+    # Trust style
+    if stats['agent_suggestions_rejected'] > 0:
+        trust_style = "Calibrated trust — accepts when appropriate, pushes back when necessary"
+    elif stats['agent_suggestions_accepted'] > 0:
+        trust_style = "High trust — tends to accept AI output without pushback"
+    elif stats['agent_interactions'] == 0:
+        trust_style = "AI-avoidant — preferred to work independently"
+    else:
+        trust_style = "Exploratory — used AI for investigation but made decisions independently"
+    
+    bugs_text = (
+        f"Fixed {sum(1 for v in bugs_fixed.values() if v)}/3 issues "
+        f"(case sensitivity: {'✅' if bugs_fixed['case_sensitivity'] else '❌'}, "
+        f"error handling: {'✅' if bugs_fixed['silent_exception'] else '❌'}, "
+        f"test coverage: {'✅' if bugs_fixed['test_coverage'] else '❌'})"
+    )
+    
+    report = {
+        "profile": profile,
+        "profile_description": profile_desc,
+        "final_score": final_score,
+        "scores": scores,
+        "bugs_fixed": bugs_fixed,
+        "key_moment": key_moment,
+        "strengths": strengths,
+        "improvements": improvements,
+        "trust_style": trust_style,
+        "statistics": stats,
+        "summary": f"Candidate scored {final_score}/100 as a '{profile}'. They {trust_style.lower()}. {bugs_text}."
+    }
+    
+    return jsonify(report)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

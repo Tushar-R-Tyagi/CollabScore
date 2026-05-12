@@ -5,7 +5,8 @@ import FileTree from '@/components/FileTree';
 import CodeEditor from '@/components/CodeEditor';
 import AgentChat from '@/components/Agentchat';
 import EvaluationDashboard from '../components/EvaluationDashboard';
-import { fetchFiles, sendAgentMessage, logEvent, getEvaluation, runTests, startSession } from '@/lib/api';
+import { fetchFiles, sendAgentMessage, logEvent, getEvaluation, runTests, startSession, generateReport } from '@/lib/api';
+import { report } from 'process';
 
 export default function Home() {
   const [files, setFiles] = useState<Record<string, string>>({});
@@ -14,6 +15,7 @@ export default function Home() {
   const [shipped, setShipped] = useState(false);
   const [evaluation, setEvaluation] = useState<any>(null);
   const [testOutput, setTestOutput] = useState<string | null>(null);
+  const [report, setReport] = useState<any>(null);
 
   // Load files on mount
   useEffect(() => {
@@ -63,6 +65,8 @@ export default function Home() {
     await logEvent('task_complete', {});
     const evalData = await getEvaluation(files);
     setEvaluation(evalData);
+    const reportData = await generateReport(files);
+    setReport(reportData);
     setShipped(true);
   };
 
@@ -84,7 +88,7 @@ export default function Home() {
   }
 
   if (shipped && evaluation) {
-    return <EvaluationDashboard data={evaluation} onReset={handleReset} />;
+    return <EvaluationDashboard data={evaluation} report={report} onReset={handleReset} />;
   }
 
   return (
