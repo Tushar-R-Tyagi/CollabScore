@@ -95,18 +95,18 @@ export default function Home() {
     <div className="h-screen flex flex-col bg-[#1e1e1e]">
       {/* Top bar */}
       <div className="h-14 bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#0f3460] border-b border-[#3e3e3e] flex items-center justify-between px-5">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <span className="text-xl">⚡</span>
             <span className="text-base font-bold text-white tracking-tight">
-              HackerRank <span className="text-blue-400">AI Orchestrator</span>
+              Collab <span className="text-blue-400">Score</span>
             </span>
           </div>
-          <div className="h-5 w-px bg-[#4a4a4a]"></div>
+          <div className="h-5 w-px bg-[#4a4a4a] mx-2"></div>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
             <span className="text-sm text-[#aab]">
-              Production issue: Family plan discounts not applying
+              ||Production issue: Family plan discounts not applying
             </span>
           </div>
         </div>
