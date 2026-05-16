@@ -13,7 +13,7 @@
                                                                                                     
 
 
-A prototype demonstrating how to evaluate a developer's ability to **orchestrate AI agents** (not just write code). Built for HackerRank's shift from Leetcode-style puzzles to real-world AI collaboration assessment.
+A prototype demonstrating how to evaluate a developer's ability to **orchestrate AI agents** (not just write code). Built for HackerRank's shift from Leetcode-style puzzles to real-world AI collaboration assessment. In this project I have considered a lot of things CollabsScore could be and it can be refined/ refactored into different mini products/modules that can be used independently.
 
 ## The Problem
 
