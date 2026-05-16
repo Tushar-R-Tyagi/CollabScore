@@ -139,7 +139,7 @@ TIME_SWEET_SPOT = 300        # Seconds (5 minutes)
 ```
 For a senior role, Verification weight might increase to 0.30. For a junior role, Discovery might be weighted higher.
 
-### Evidence Basis
+### Basis for Evaluation Design
 The dimensions and weights draw from:
 
 - Bloom's Taxonomy: Discovery (Analyze) → Diagnosis (Evaluate) → Verification (Evaluate) map to higher-order cognitive skills
