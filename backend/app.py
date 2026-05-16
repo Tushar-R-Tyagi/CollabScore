@@ -260,7 +260,7 @@ def evaluate():
     test_runs = event_counts.get('test_run', 0)
     task_complete = event_counts.get('task_complete', 0) > 0
 
-    # Debug: see what code the backend received
+    # Debug:
     print("=== FINAL CODE KEYS ===")
     for key, value in final_code.items():
         print(f"{key}: {value[:100]}...")
