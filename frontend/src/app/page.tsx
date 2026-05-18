@@ -72,6 +72,7 @@ export default function Home() {
 
   // Reset
   const handleReset = async () => {
+    await startSession();
     const data = await fetchFiles();
     setFiles(data);
     setShipped(false);

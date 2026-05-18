@@ -76,9 +76,10 @@ def read_billing_module():
 @app.route('/api/session/start', methods=['POST'])
 def start_session():
     """Record the start time of the candidate's session."""
-    global session_start
+    global session_start, events
     session_start = datetime.datetime.now()
     events = []  # Clears events
+    print(f"Session started, events cleared. Count: {len(events)}")
     return jsonify({"started": session_start.isoformat()})
 
 
