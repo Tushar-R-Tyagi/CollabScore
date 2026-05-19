@@ -26,16 +26,6 @@ Two issues are hidden in the codebase without comments or hints:
 1. **Case sensitivity** (`discounts.py`): Discount check compares `plan == "family"` but the actual plan ID in `plans.py` is `"FAMILY"`
 2. **Silent exception handling** (`billing.py`): `except Exception` catches all errors and returns `None`, masking failures in production
 
-## What Gets Evaluated
-
-| Dimension | What It Measures |
-|-----------|-----------------|
-| Discovery | How the candidate explores the codebase (agent prompts vs direct browsing) |
-| Diagnosis | Whether they run tests and verify hypotheses |
-| Task Allocation | Balance between delegating to AI and writing code directly |
-| Verification | Whether they review, accept, or reject AI suggestions |
-| Speed | Time to ship the fix |
-
 ## 📐 How Scoring Works
 
 The evaluation uses a transparent, tunable mathematical model with five dimensions. Every score is traceable to specific candidate behaviors, nothing is a black box.
@@ -97,8 +87,8 @@ speed = 100 × completion × time_efficiency × quality_penalty
 - Introduces a quality penalty if the candidate's "fixes" created new problems
 - Lowest weight because speed without verification is dangerous
 
-### Composite Score
-composite = 0.20(discovery) + 0.25(diagnosis) + 0.20(allocation) + 0.25(verification) + 0.10(speed)
+### Final Score
+Final Score = 0.20(discovery) + 0.25(diagnosis) + 0.20(allocation) + 0.25(verification) + 0.10(speed)
 
 
 ### Hallucination Detection
