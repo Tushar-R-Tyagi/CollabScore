@@ -352,7 +352,7 @@ def evaluate():
     else:
         agent_ratio = agent_prompts / total_actions
         if agent_ratio < 0.1:
-            allocation = 20
+            allocation = 50
         elif agent_ratio > 0.9:
             allocation = 15
         else:
