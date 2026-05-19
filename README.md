@@ -41,6 +41,8 @@ The evaluation uses a transparent, tunable mathematical model with five dimensio
 | **Speed** | 10% | Completion quality relative to time invested |
 
 ### Discovery (Weight: 0.20)
+
+```
 agent_ratio = agent_prompts / (agent_prompts + direct_code_edits)
 
 if ratio < 0.1: score = 20 (ignored available AI)
@@ -49,8 +51,6 @@ else:
 deviation = |ratio - 0.5|
 score = 100 × (1 - deviation × 2.5)
 
-```
-
 - Sweet spot: 40-60% of actions delegated to AI
 - Too much AI reliance = 15 (outsourcing)
 - Too little AI use = 20 (not leveraging available tools)
@@ -58,7 +58,39 @@ score = 100 × (1 - deviation × 2.5)
 
 ```
 
+### Diagnosis (Weight: 0.25)
+```
+test_rigor = min(1.0, test_runs / 3)
+fix_completeness = bugs_fixed / 2
+skepticism = min(1.0, rejected_suggestions / 2)
+hallucination_bonus = 1.0 if caught_agent_hallucination else 0.0
+
+hallucination_penalty = 0.3 if agent_hallucinated AND accepted_it else 1.0
+
+diagnosis = 100 × (0.3 × test_rigor + 0.4 × fix_completeness + 0.2 × skepticism + 0.1 × hallucination_bonus) × hallucination_penalty
+
+```
+
+### Task Allocation (Weight: 0.20)
+
+```
+total_actions = agent_prompts + direct_code_edits
+agent_ratio = agent_prompts / total_actions
+
+if total_actions == 0: score = 0
+if ratio < 0.1: score = 20    (ignored available AI)
+if ratio > 0.9: score = 15    (outsourced everything)
+else:
+    deviation = |ratio - 0.5|
+    score = 100 × (1 - deviation × 2.5)
+
+# Quality penalty: if agent output was accepted but tests failed
+if test_runs > 0 AND accepted_suggestions > 0 AND bugs_fixed < 2:
+    score = max(15, score - 25)
+```
+
 ### Verification (Weight: 0.25)
+```
 rejection_rate = rejected / (accepted + rejected)
 
 if never_used_suggestions: score = 50 (neutral)
@@ -74,8 +106,10 @@ cap at 100
 - Blind acceptance of all agent suggestions = 15
 - Bonus for improving agent code after accepting it
 - Major bonus (+20) for catching fabricated code
+```
 
 ### Speed (Weight: 0.10)
+```
 completion = bugs_fixed / 2
 time_efficiency = max(0, 1 - (time_spent - 300) / 900)
 quality_penalty = 0.5 if introduced_new_bugs else 1.0
@@ -86,12 +120,14 @@ speed = 100 × completion × time_efficiency × quality_penalty
 - Sweet spot: 5-20 minutes
 - Introduces a quality penalty if the candidate's "fixes" created new problems
 - Lowest weight because speed without verification is dangerous
+```
 
 ### Final Score
+```
 Final Score = 0.20(discovery) + 0.25(diagnosis) + 0.20(allocation) + 0.25(verification) + 0.10(speed)
+```
 
-
-### Hallucination Detection
+## Hallucination Detection
 
 The agent is deliberately calibrated to occasionally fabricate solutions (e.g., inventing a `users.py` module that doesn't exist). The system:
 
@@ -110,7 +146,7 @@ A candidate who blindly accepts hallucinated code gets:
 - **Discovery and Allocation tie at 20%** — systematic exploration and balanced delegation are equally important.
 - **Speed is lightest (10%)** — hiring for speed encourages the wrong behavior with AI. A fast but careless orchestrator is worse than a slow but thorough one.
 
-### Tunability
+## Tunability
 
 All weights, thresholds, and penalty factors are declared as constants and can be adjusted per role:
 
