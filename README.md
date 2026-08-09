@@ -15,6 +15,14 @@
 
 A prototype demonstrating how to evaluate a developer's ability to **orchestrate AI agents** (not just write code). Built for HackerRank's shift from Leetcode-style puzzles to real-world AI collaboration assessment. In this project I have considered a lot of things CollabsScore could be and it can be refined/ refactored into different mini products/modules that can be used independently.
 
+## Walkthrough
+
+
+
+https://github.com/user-attachments/assets/b1818a06-d25a-4111-8a4c-ec87bb4c95f8
+
+
+
 ## The Problem
 
 A billing system has a production bug: Family plan users with over 12 months tenure aren't receiving their 15% loyalty discount. The candidate must debug a 4-file Python codebase using an AI agent in a three-panel IDE.
